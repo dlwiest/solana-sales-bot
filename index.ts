@@ -12,6 +12,7 @@ interface IOptions {
 config();
 if (!process.env.COLLECTION_ADDRESS || !process.env.DISCORD_URL) {
 	console.log('Please configure your environment variables.');
+	process.exit();
 }
 
 const POLLING_INTERVAL = 5000;
