@@ -30,12 +30,14 @@ const postSaleToDiscord = async (title: string, price: number, date: string, sig
                                 inline: true
                             },
                         ],
-                        thumbnail: {
+                        image: {
                             url: `${imageURL}`,
+                        },
+                        thumbnail: {
+                            url: process.env.EMBED_THUMBNAIL || '',
                         },
                         footer: {
                             text: getRandomFooter(),
-                            icon_url: process.env.EMBED_THUMBNAIL || '',
                         }
                     }
                 ]
