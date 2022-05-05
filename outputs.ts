@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getRandomFooter } from './helpers';
 
 const printSalesInfo = (date: string, price: number, signature: string, title: string, imageURL: string) => {
     console.log("-------------------------------------------");
@@ -29,14 +30,12 @@ const postSaleToDiscord = async (title: string, price: number, date: string, sig
                                 inline: true
                             },
                         ],
-                        image: {
+                        thumbnail: {
                             url: `${imageURL}`,
                         },
-                        thumbnail: {
-                            url: process.env.EMBED_THUMBNAIL || '',
-                        },
                         footer: {
-                            text: process.env.EMBED_FOOTER_TEXT || '',
+                            text: getRandomFooter(),
+                            icon_url: process.env.EMBED_THUMBNAIL || '',
                         }
                     }
                 ]
