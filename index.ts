@@ -1,8 +1,9 @@
-import http, { IncomingMessage, ServerResponse } from 'http';
 import axios from 'axios';
 import { PublicKey, clusterApiUrl, Connection as SolanaConnection, LAMPORTS_PER_SOL, ConfirmedSignatureInfo } from '@solana/web3.js';
 import { Connection as MetaplexConnection, programs } from '@metaplex/js';
 import { config } from 'dotenv';
+import runStatusServer from './statusServer';
+import { printSalesInfo, postSaleToDiscord } from './outputs';
 
 interface IOptions {
 	until?: string;
@@ -15,6 +16,8 @@ if (!process.env.COLLECTION_ADDRESS || !process.env.DISCORD_URL) {
 	process.exit();
 }
 
+runStatusServer();
+
 const POLLING_INTERVAL = 5000;
 const BACKLOG_LIMIT = 10;
 
@@ -24,13 +27,7 @@ const solanaConnection = new SolanaConnection(url, 'confirmed');
 const metaplexConnection = new MetaplexConnection('mainnet-beta');
 const { metadata: { Metadata } } = programs;
 
-const listener = (req: IncomingMessage, res: ServerResponse) => {
-	res.writeHead(200);
-	res.end('Online');
-}
 
-const server = http.createServer(listener);
-server.listen(8080);
 
 const getMetadata = async (tokenPubKey: string) => {
 	const addr = await Metadata.getPDA(tokenPubKey);
@@ -38,53 +35,6 @@ const getMetadata = async (tokenPubKey: string) => {
 	const { data } = await axios.get(resp.data.data.uri);
 
 	return data;
-};
-
-const printSalesInfo = (date: string, price: number, signature: string, title: string, imageURL: string) => {
-	console.log("-------------------------------------------");
-	console.log(`Sale at ${date} ---> ${price} SOL`);
-	console.log("Signature: ", signature);
-	console.log("Name: ", title);
-	console.log("Image: ", imageURL);
-};
-
-const postSaleToDiscord = async (title: string, price: number, date: string, signature: string, imageURL: string) => {
-	try {
-		await axios.post(process.env.DISCORD_URL || '',
-			{
-				'embeds': [
-					{
-						title: process.env.EMBED_TITLE || 'SALE',
-						url: `https://explorer.solana.com/tx/${signature}`,
-						description: `${title}`,
-						fields: [
-							{
-								name: 'Price',
-								value: `${price} SOL`,
-								inline: true
-							},
-							{
-								name: 'Date',
-								value: `${date}`,
-								inline: true
-							},
-						],
-						image: {
-							url: `${imageURL}`,
-						},
-						thumbnail: {
-							url: process.env.EMBED_THUMBNAIL || '',
-						},
-						footer: {
-							text: process.env.EMBED_FOOTER_TEXT || '',
-						}
-					}
-				]
-			}
-		);
-	} catch (e) {
-		console.log('Failed to post to Discord', e);
-	}
 };
 
 const timer = (ms: number) => new Promise(res => setTimeout(res, ms));
