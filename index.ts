@@ -1,4 +1,5 @@
 import axios from 'axios';
+import fs, { NoParamCallback } from 'fs';
 import { PublicKey, clusterApiUrl, Connection as SolanaConnection, LAMPORTS_PER_SOL, ConfirmedSignatureInfo } from '@solana/web3.js';
 import { Connection as MetaplexConnection, programs } from '@metaplex/js';
 import { config } from 'dotenv';
@@ -27,8 +28,6 @@ const solanaConnection = new SolanaConnection(url, 'confirmed');
 const metaplexConnection = new MetaplexConnection('mainnet-beta');
 const { metadata: { Metadata } } = programs;
 
-
-
 const getMetadata = async (tokenPubKey: string) => {
 	const addr = await Metadata.getPDA(tokenPubKey);
 	const resp = await Metadata.load(metaplexConnection, addr);
@@ -41,10 +40,23 @@ const timer = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 const runSalesBot = async () => {
 	let signatures: ConfirmedSignatureInfo[] = [];
-	let lastKnownSignatureStr: string;
+
+	let lastKnownSignatureStr: string = '';
+
+	// Try to start from last known signature on reboot
+	try {
+		const last = fs.readFileSync('./last', 'utf8');
+
+		lastKnownSignatureStr = last;
+		console.log(`Starting from last known signature: ${last}`);
+	} catch {
+		console.log('Unable to find last known signature. Default to most recent ten.');
+	}
+
 	const options: IOptions = { limit: BACKLOG_LIMIT };
 
 	while (true) {
+		options.until = lastKnownSignatureStr || undefined;
 		try {
 			signatures = await solanaConnection.getSignaturesForAddress(projectPubKey, options);
 			if (!signatures.length) {
@@ -87,8 +99,13 @@ const runSalesBot = async () => {
 				}
 
 				lastKnownSignatureStr = signatures[0].signature;
+				
 				if (lastKnownSignatureStr) {
-					options.until = lastKnownSignatureStr;
+					try {
+						fs.writeFileSync('./last', lastKnownSignatureStr);
+					} catch (error) {
+						console.log('Error persisting signature:', error);
+					}
 				}
 			}
 		}
